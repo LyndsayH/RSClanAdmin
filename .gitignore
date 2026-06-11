@@ -1,0 +1,15 @@
+.env
+.venv/
+.vscode/
+__pycache__/
+*.pyc
+
+daily_update_log.txt
+failed_hiscores_*.csv
+import_anomalies.csv
+
+snapshots_export.csv
+inactives_export.csv
+hiscore_corrections.csv
+
+runemetrics_*.html

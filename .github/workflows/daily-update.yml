@@ -1,0 +1,39 @@
+name: RS Clan Daily Update
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # Daily at 06:30 UTC. In UK summer time, this is 07:30 BST.
+    - cron: "30 6 * * *"
+
+jobs:
+  daily-update:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run clan total collector
+        run: |
+          python ingest_clan_totals.py
+
+      - name: Run skill collector
+        run: |
+          python ingest_player.py

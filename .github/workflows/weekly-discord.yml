@@ -1,0 +1,37 @@
+name: Weekly Discord Skill Winners
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "7 9 * * 1"
+      timezone: "Europe/London"
+
+jobs:
+  post-weekly-winners:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DISCORD_WEEKLY_WEBHOOK_URL: ${{ secrets.DISCORD_WEEKLY_WEBHOOK_URL }}
+      DISCORD_WEEKLY_THREAD_ID: ${{ secrets.DISCORD_WEEKLY_THREAD_ID }}
+      PYTHONUTF8: "1"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Post weekly skill winners
+        run: python post_weekly_skill_winners.py

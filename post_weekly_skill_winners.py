@@ -8,8 +8,8 @@ load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-DISCORD_WEBHOOK_URL = os.environ["DISCORD_MONTHLY_WEBHOOK_URL"]
-DISCORD_THREAD_ID = os.environ["DISCORD_MONTHLY_THREAD_ID"]
+DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEEKLY_WEBHOOK_URL"]
+DISCORD_THREAD_ID = os.environ["DISCORD_WEEKLY_THREAD_ID"]
 
 SUPABASE_HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -18,15 +18,15 @@ SUPABASE_HEADERS = {
 }
 
 
-def fetch_monthly_winners() -> list[dict[str, Any]]:
-    url = f"{SUPABASE_URL}/rest/v1/previous_month_skill_winners"
+def fetch_weekly_winners() -> list[dict[str, Any]]:
+    url = f"{SUPABASE_URL}/rest/v1/weekly_skill_winners"
 
     response = requests.get(
         url,
         headers=SUPABASE_HEADERS,
         params={
             "select": (
-                "skill,monthly_winner,xp_gain,"
+                "skill,weekly_winner,xp_gain,"
                 "baseline_snapshot,latest_snapshot"
             ),
             "order": "skill.asc",
@@ -42,6 +42,7 @@ def fetch_monthly_winners() -> list[dict[str, Any]]:
 
     return response.json()
 
+
 def format_xp(value: int | None) -> str:
     return f"{int(value or 0):,} XP"
 
@@ -50,8 +51,8 @@ def make_embeds(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not rows:
         return [
             {
-                "title": "Monthly Skill Winners",
-                "description": "No monthly skill gain data was available.",
+                "title": "Weekly Skill Winners",
+                "description": "No weekly skill gain data was available.",
             }
         ]
 
@@ -69,7 +70,7 @@ def make_embeds(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         fields = []
 
         for row in group:
-            winner = row.get("monthly_winner") or "No recorded gain"
+            winner = row.get("weekly_winner") or "No recorded gain"
             xp_gain = format_xp(row.get("xp_gain"))
 
             fields.append(
@@ -82,9 +83,9 @@ def make_embeds(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
         embed: dict[str, Any] = {
             "title": (
-                "🏆 Monthly Skill Winners 🏆"
+                "🏆 Weekly Skill Winners"
                 if index == 1
-                else "🏆 Monthly Skill Winners — continued 🏆 "
+                else "🏆 Weekly Skill Winners — continued"
             ),
             "description": f"`{start_date}` → `{end_date}`",
             "fields": fields,
@@ -111,7 +112,7 @@ def post_to_discord(embeds: list[dict[str, Any]]) -> None:
 
     response = requests.post(
         DISCORD_WEBHOOK_URL,
-         params={
+        params={
         "thread_id": DISCORD_THREAD_ID,
         "wait": "true",
     },
@@ -127,9 +128,9 @@ def post_to_discord(embeds: list[dict[str, Any]]) -> None:
 
 
 def main() -> None:
-    print("Fetching monthly skill winners...")
+    print("Fetching weekly skill winners...")
 
-    rows = fetch_monthly_winners()
+    rows = fetch_weekly_winners()
 
     print(f"Rows fetched: {len(rows)}")
 
@@ -139,7 +140,7 @@ def main() -> None:
 
     post_to_discord(embeds)
 
-    print("Monthly skill winners posted successfully.")
+    print("Weekly skill winners posted successfully.")
 
 
 if __name__ == "__main__":

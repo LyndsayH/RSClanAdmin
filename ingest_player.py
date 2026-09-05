@@ -293,8 +293,8 @@ def main() -> None:
         try:
             rows = fetch_hiscores(lookup_name)
 
-            upsert_total_snapshot(player_id, rows[0]) # Total XP snapshots are owned by ingest_clan_totals.py.
-# Do not write hiscore-derived totals here, as that contaminates total-XP reports.
+# Total XP snapshots are owned by ingest_clan_totals.py.
+# Do not write hiscore-derived totals here.
 # upsert_total_snapshot(player_id, rows[0])
             upsert_skill_snapshots(player_id, rows)
             update_hiscore_status(player_id, "ok", None)

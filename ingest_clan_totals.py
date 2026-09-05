@@ -112,7 +112,8 @@ def get_existing_players() -> dict[str, dict]:
         params={
             "select": (
                 "id,current_name,collection_status,collect_skills,watchlist,"
-                "last_total_xp,last_total_xp_snapshot"
+                "last_total_xp,last_total_xp_snapshot,last_xp_gain_date,"
+                "is_current_clan_member"
             ),
             "limit": "10000",
         },
@@ -144,6 +145,8 @@ def upsert_players(members: list[dict], existing: dict[str, dict]) -> dict[str, 
             previous_xp = old.get("last_total_xp")
             previous_status = old.get("collection_status") or "active"
             previous_collect_skills = old.get("collect_skills")
+            if previous_collect_skills is None:
+                previous_collect_skills = True
             watchlist = bool(old.get("watchlist"))
 
         gained_xp = previous_xp is not None and member["total_xp"] > previous_xp
@@ -244,6 +247,54 @@ def upsert_total_snapshots(members: list[dict], name_to_id: dict[str, int]) -> N
         )
         response.raise_for_status()
 
+def mark_absent_players_not_current(members: list[dict]) -> int:
+    """
+    Mark players as no longer current clan members if they were not returned
+    by today's RuneScape clan members feed.
+
+    This keeps players historically, but removes them from current clan reports.
+    """
+    current_names = {member["current_name"] for member in members}
+
+    response = requests.get(
+        supabase_url("players"),
+        headers=HEADERS,
+        params={
+            "select": "id,current_name,is_current_clan_member",
+            "is_current_clan_member": "eq.true",
+            "limit": "10000",
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+
+    existing_current = response.json()
+
+    absent_ids = [
+        row["id"]
+        for row in existing_current
+        if row["current_name"] not in current_names
+    ]
+
+    if not absent_ids:
+        return 0
+
+    for batch in chunked(absent_ids, 500):
+        id_list = ",".join(str(player_id) for player_id in batch)
+
+        patch_response = requests.patch(
+            supabase_url("players"),
+            headers=HEADERS,
+            params={"id": f"in.({id_list})"},
+            json={
+                "is_current_clan_member": False,
+                "collect_skills": False,
+            },
+            timeout=60,
+        )
+        patch_response.raise_for_status()
+
+    return len(absent_ids)
 
 def main() -> None:
     print(f"Fetching clan totals for: {CLAN_NAME}")
@@ -260,6 +311,9 @@ def main() -> None:
 
     upsert_total_snapshots(members, name_to_id)
     print("Total XP snapshots upserted.")
+
+    absent_count = mark_absent_players_not_current(members)
+    print(f"Players marked no longer current: {absent_count:,}")
 
     reactivated = 0
     new_players = 0
